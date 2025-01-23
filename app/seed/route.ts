@@ -1,122 +1,155 @@
-// import bcrypt from 'bcrypt';
-// import { db } from '@vercel/postgres';
-// import { invoices, customers, revenue, users } from '../lib/placeholder-data';
+import bcrypt from "bcrypt";
+import mysql from "mysql2/promise";
+import { invoices, customers, revenues, users } from "../lib/placeholder-data";
+import { NextResponse } from 'next/server'; // Import NextResponse
 
-// const client = await db.connect();
+// Create a MySQL connection pool
+const pool = mysql.createPool({
+  host: process.env.MYSQL_DB_HOST, // Replace with your database host
+  user: process.env.MYSQL_DB_USER, // Replace with your database username
+  password: process.env.MYSQL_DB_PASSWORD, // Replace with your database password
+  database: process.env.MYSQL_DATABASE, // Replace with your database name
+});
 
-// async function seedUsers() {
-//   await client.sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
-//   await client.sql`
-//     CREATE TABLE IF NOT EXISTS users (
-//       id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-//       name VARCHAR(255) NOT NULL,
-//       email TEXT NOT NULL UNIQUE,
-//       password TEXT NOT NULL
-//     );
-//   `;
+async function seedUsers() {
+  const connection = await pool.getConnection();
+  try {
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        password VARCHAR(255) NOT NULL
+      );
+    `);
 
-//   const insertedUsers = await Promise.all(
-//     users.map(async (user) => {
-//       const hashedPassword = await bcrypt.hash(user.password, 10);
-//       return client.sql`
-//         INSERT INTO users (id, name, email, password)
-//         VALUES (${user.id}, ${user.name}, ${user.email}, ${hashedPassword})
-//         ON CONFLICT (id) DO NOTHING;
-//       `;
-//     }),
-//   );
+    const insertedUsers = await Promise.all(
+      users.map(async (user) => {
+        const hashedPassword = await bcrypt.hash(user.password, 10);
+        return connection.query(
+          `
+          INSERT INTO users (name, email, password)
+          VALUES (?, ?, ?)
+          ON DUPLICATE KEY UPDATE id=id;  -- No-op to avoid error on duplicate
+        `,
+          [user.name, user.email, hashedPassword]
+        );
+      })
+    );
 
-//   return insertedUsers;
-// }
+    return insertedUsers;
+  } finally {
+    connection.release();
+  }
+}
 
-// async function seedInvoices() {
-//   await client.sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+async function seedInvoices() {
+  const connection = await pool.getConnection();
+  try {
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS invoices (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        customer_id INT NOT NULL,
+        amount INT NOT NULL,
+        status VARCHAR(255) NOT NULL,
+        date DATE NOT NULL
+      );
+    `);
 
-//   await client.sql`
-//     CREATE TABLE IF NOT EXISTS invoices (
-//       id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-//       customer_id UUID NOT NULL,
-//       amount INT NOT NULL,
-//       status VARCHAR(255) NOT NULL,
-//       date DATE NOT NULL
-//     );
-//   `;
+    const insertedInvoices = await Promise.all(
+      invoices.map((invoice) =>
+        connection.query(
+          `
+          INSERT INTO invoices (customer_id, amount, status, date)
+          VALUES (?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE id=id;  -- No-op to avoid error on duplicate
+        `,
+          [invoice.customer_id, invoice.amount, invoice.status, invoice.date]
+        )
+      )
+    );
 
-//   const insertedInvoices = await Promise.all(
-//     invoices.map(
-//       (invoice) => client.sql`
-//         INSERT INTO invoices (customer_id, amount, status, date)
-//         VALUES (${invoice.customer_id}, ${invoice.amount}, ${invoice.status}, ${invoice.date})
-//         ON CONFLICT (id) DO NOTHING;
-//       `,
-//     ),
-//   );
+    return insertedInvoices;
+  } finally {
+    connection.release();
+  }
+}
 
-//   return insertedInvoices;
-// }
+async function seedCustomers() {
+  const connection = await pool.getConnection();
+  try {
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS customers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        image_url VARCHAR(255) NOT NULL
+      );
+    `);
 
-// async function seedCustomers() {
-//   await client.sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+    const insertedCustomers = await Promise.all(
+      customers.map((customer) =>
+        connection.query(
+          `
+          INSERT INTO customers (name, email, image_url)
+          VALUES (?, ?, ?)
+          ON DUPLICATE KEY UPDATE id=id;  -- No-op to avoid error on duplicate
+        `,
+          [customer.name, customer.email, customer.image_url]
+        )
+      )
+    );
 
-//   await client.sql`
-//     CREATE TABLE IF NOT EXISTS customers (
-//       id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-//       name VARCHAR(255) NOT NULL,
-//       email VARCHAR(255) NOT NULL,
-//       image_url VARCHAR(255) NOT NULL
-//     );
-//   `;
+    return insertedCustomers;
+  } finally {
+    connection.release();
+  }
+}
 
-//   const insertedCustomers = await Promise.all(
-//     customers.map(
-//       (customer) => client.sql`
-//         INSERT INTO customers (id, name, email, image_url)
-//         VALUES (${customer.id}, ${customer.name}, ${customer.email}, ${customer.image_url})
-//         ON CONFLICT (id) DO NOTHING;
-//       `,
-//     ),
-//   );
+async function seedRevenue() {
+  const connection = await pool.getConnection();
+  try {
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS revenues (
+        month VARCHAR(4) NOT NULL UNIQUE,
+        revenue INT NOT NULL
+      );
+    `);
 
-//   return insertedCustomers;
-// }
+    const insertedRevenue = await Promise.all(
+      revenues.map((rev) =>
+        connection.query(
+          `
+          INSERT INTO revenues (month, revenue)
+          VALUES (?, ?)
+          ON DUPLICATE KEY UPDATE revenue=revenue;  -- No-op to avoid error on duplicate
+        `,
+          [rev.month, rev.revenue]
+        )
+      )
+    );
 
-// async function seedRevenue() {
-//   await client.sql`
-//     CREATE TABLE IF NOT EXISTS revenue (
-//       month VARCHAR(4) NOT NULL UNIQUE,
-//       revenue INT NOT NULL
-//     );
-//   `;
-
-//   const insertedRevenue = await Promise.all(
-//     revenue.map(
-//       (rev) => client.sql`
-//         INSERT INTO revenue (month, revenue)
-//         VALUES (${rev.month}, ${rev.revenue})
-//         ON CONFLICT (month) DO NOTHING;
-//       `,
-//     ),
-//   );
-
-//   return insertedRevenue;
-// }
+    return insertedRevenue;
+  } finally {
+    connection.release();
+  }
+}
 
 export async function GET() {
-  return Response.json({
-    message:
-      'Uncomment this file and remove this line. You can delete this file when you are finished.',
-  });
-  // try {
-  //   await client.sql`BEGIN`;
-  //   await seedUsers();
-  //   await seedCustomers();
-  //   await seedInvoices();
-  //   await seedRevenue();
-  //   await client.sql`COMMIT`;
+  const connection = await pool.getConnection();
+  try {
+    await connection.query(`START TRANSACTION`);
+    await seedUsers();
+    await seedCustomers();
+    await seedInvoices();
+    await seedRevenue();
+    await connection.query(`COMMIT`);
 
-  //   return Response.json({ message: 'Database seeded successfully' });
-  // } catch (error) {
-  //   await client.sql`ROLLBACK`;
-  //   return Response.json({ error }, { status: 500 });
-  // }
+    return NextResponse.json({ message: "Database seeded successfully" }); // Return a JSON response
+  } catch (error) {
+    await connection.query(`ROLLBACK`);
+    return NextResponse.json({ error: error.message }, { status: 500 }); // Return a JSON response with error
+  } finally {
+    connection.release();
+  }
 }

@@ -37,3 +37,8 @@ export default async function Page() {
     </main>
   );
 }
+
+
+
+// for check production
+// import { Card } from '@/app/ui/dashboard/cards';

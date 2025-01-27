@@ -52,7 +52,8 @@ export async function fetchFilteredInvoices(
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
   try {
-    const [invoices] = await pool.query<InvoicesTable>(`
+    const [invoices] = await pool.query<InvoicesTable>(
+      `
       SELECT
         invoices.id,
         invoices.amount,
@@ -64,14 +65,24 @@ export async function fetchFilteredInvoices(
       FROM invoices
       JOIN customers ON invoices.customer_id = customers.id
       WHERE
-        customers.name ILIKE ${`%${query}%`} OR
-        customers.email ILIKE ${`%${query}%`} OR
-        invoices.amount::text ILIKE ${`%${query}%`} OR
-        invoices.date::text ILIKE ${`%${query}%`} OR
-        invoices.status ILIKE ${`%${query}%`}
+        customers.name LIKE ? OR
+        customers.email LIKE ? OR
+        CAST(invoices.amount AS CHAR) LIKE ? OR
+        CAST(invoices.date AS CHAR) LIKE ? OR
+        invoices.status LIKE ?
       ORDER BY invoices.date DESC
-      LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
-    `);
+      LIMIT ? OFFSET ?
+      `,
+      [
+        `%${query}%`,
+        `%${query}%`,
+        `%${query}%`,
+        `%${query}%`,
+        `%${query}%`,
+        ITEMS_PER_PAGE,
+        offset,
+      ]
+    );
 
     return invoices;
   } catch (error) {
@@ -82,17 +93,20 @@ export async function fetchFilteredInvoices(
 
 export async function fetchInvoicesPages(query: string) {
   try {
-    const [count] = await pool.query(`
-      SELECT COUNT(*)
+    const [count] = await pool.query(
+      `
+      SELECT COUNT(*) AS count
       FROM invoices
       JOIN customers ON invoices.customer_id = customers.id
       WHERE
-        customers.name ILIKE ${`%${query}%`} OR
-        customers.email ILIKE ${`%${query}%`} OR
-        invoices.amount::text ILIKE ${`%${query}%`} OR
-        invoices.date::text ILIKE ${`%${query}%`} OR
-        invoices.status ILIKE ${`%${query}%`}
-    `);
+        customers.name LIKE ? OR
+        customers.email LIKE ? OR
+        CAST(invoices.amount AS CHAR) LIKE ? OR
+        CAST(invoices.date AS CHAR) LIKE ? OR
+        invoices.status LIKE ?
+      `,
+      [`%${query}%`, `%${query}%`, `%${query}%`, `%${query}%`, `%${query}%`]
+    );
 
     const totalPages = Math.ceil(Number(count[0].count) / ITEMS_PER_PAGE);
     return totalPages;
@@ -146,7 +160,8 @@ export async function fetchCustomers() {
 
 export async function fetchFilteredCustomers(query: string) {
   try {
-    const [data] = await pool.query<CustomersTableType>(`
+    const [data] = await pool.query<CustomersTableType>(
+      `
       SELECT
         customers.id,
         customers.name,
@@ -158,11 +173,13 @@ export async function fetchFilteredCustomers(query: string) {
       FROM customers
       LEFT JOIN invoices ON customers.id = invoices.customer_id
       WHERE
-        customers.name ILIKE ${`%${query}%`} OR
-        customers.email ILIKE ${`%${query}%`}
+        customers.name LIKE ? OR
+        customers.email LIKE ?
       GROUP BY customers.id, customers.name, customers.email, customers.image_url
       ORDER BY customers.name ASC
-    `);
+      `,
+      [`%${query}%`, `%${query}%`]
+    );
 
     return data.map((customer) => ({
       ...customer,
@@ -178,10 +195,18 @@ export async function fetchFilteredCustomers(query: string) {
 export async function fetchCardData() {
   try {
     // Get the counts from the database
-    const [invoiceCountResult] = await pool.query("SELECT count(*) AS count FROM invoices");
-    const [customerCountResult] = await pool.query("SELECT count(*) AS count FROM customers");
-    const [paidInvoicesResult] = await pool.query('SELECT count(*) AS count FROM invoices WHERE status = "paid"');
-    const [pendingInvoicesResult] = await pool.query('SELECT count(*) AS count FROM invoices WHERE status = "pending"');
+    const [invoiceCountResult] = await pool.query(
+      "SELECT count(*) AS count FROM invoices"
+    );
+    const [customerCountResult] = await pool.query(
+      "SELECT count(*) AS count FROM customers"
+    );
+    const [paidInvoicesResult] = await pool.query(
+      'SELECT count(*) AS count FROM invoices WHERE status = "paid"'
+    );
+    const [pendingInvoicesResult] = await pool.query(
+      'SELECT count(*) AS count FROM invoices WHERE status = "pending"'
+    );
 
     // Extract the count values from the results
     const numberOfInvoices = Number(invoiceCountResult[0].count);

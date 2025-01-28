@@ -7,7 +7,7 @@ import {
   InvoicesTable,
   LatestInvoiceRaw,
   Revenue,
-} from "./definitions";
+} from "./definations";
 
 import { formatCurrency } from "./utils";
 

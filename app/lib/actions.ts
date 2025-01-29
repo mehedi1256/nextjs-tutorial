@@ -26,12 +26,16 @@ export async function createInvoice(formData: FormData) {
   const amountInCents = amount * 100;
   const date = new Date().toISOString().split("T")[0];
 
-  const [insertResult] = await pool.query(
-    `
-    INSERT INTO invoices (customer_id, amount, status, date)
-    VALUES (?, ?, ?, ?)`,
-    [`${customerId}`, `${amountInCents}`, `${status}`, `${date}`]
-  );
+  try {
+    const [insertResult] = await pool.query(
+      `
+      INSERT INTO invoices (customer_id, amount, status, date)
+      VALUES (?, ?, ?, ?)`,
+      [`${customerId}`, `${amountInCents}`, `${status}`, `${date}`]
+    );
+  } catch (error) {
+    console.log(error);
+  }
 
   revalidatePath("/dashboard/invoices");
   redirect("/dashboard/invoices");
@@ -46,23 +50,35 @@ export async function updateInvoice(id: string, formData: FormData) {
 
   const amountInCents = amount * 100;
 
-  const [updatedResult] = await pool.query(
-    `
-      UPDATE invoices
-      SET 
-        customer_id = ?, 
-        amount = ?, 
-        status = ?
-      WHERE id = ?
-    `,
-    [`${customerId}`, `${amountInCents}`, `${status}`, `${id}`]
-  );
+  try {
+    const [updatedResult] = await pool.query(
+      `
+        UPDATE invoices
+        SET 
+          customer_id = ?, 
+          amount = ?, 
+          status = ?
+        WHERE id = ?
+      `,
+      [`${customerId}`, `${amountInCents}`, `${status}`, `${id}`]
+    );
+  } catch (error) {
+    console.log(error);
+  }
 
   revalidatePath("/dashboard/invoices");
   redirect("/dashboard/invoices");
 }
 
 export async function deleteInvoice(id: string) {
-  const [deletedResult] = await pool.query(`DELETE FROM invoices WHERE id = ?`, [`${id}`]);
-  revalidatePath('/dashboard/invoices');
+  throw new Error("this item is not deleted");
+  try {
+    const [deletedResult] = await pool.query(
+      `DELETE FROM invoices WHERE id = ?`,
+      [`${id}`]
+    );
+  } catch (error) {
+    console.log(error);
+  }
+  revalidatePath("/dashboard/invoices");
 }

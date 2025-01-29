@@ -1,15 +1,8 @@
 import bcrypt from "bcrypt";
-import mysql from "mysql2/promise";
+import pool from "./../lib/mysql";
 import { invoices, customers, revenues, users } from "../lib/placeholder-data";
 import { NextResponse } from 'next/server'; // Import NextResponse
 
-// Create a MySQL connection pool
-const pool = mysql.createPool({
-  host: process.env.MYSQL_DB_HOST, // Replace with your database host
-  user: process.env.MYSQL_DB_USER, // Replace with your database username
-  password: process.env.MYSQL_DB_PASSWORD, // Replace with your database password
-  database: process.env.MYSQL_DATABASE, // Replace with your database name
-});
 
 async function seedUsers() {
   const connection = await pool.getConnection();

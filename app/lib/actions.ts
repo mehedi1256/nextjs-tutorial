@@ -44,8 +44,6 @@ export async function updateInvoice(id: string, formData: FormData) {
     status: formData.get("status"),
   });
 
-  console.log({ customerId, amount, status, id });
-
   const amountInCents = amount * 100;
 
   const [updatedResult] = await pool.query(
@@ -62,4 +60,9 @@ export async function updateInvoice(id: string, formData: FormData) {
 
   revalidatePath("/dashboard/invoices");
   redirect("/dashboard/invoices");
+}
+
+export async function deleteInvoice(id: string) {
+  const [deletedResult] = await pool.query(`DELETE FROM invoices WHERE id = ?`, [`${id}`]);
+  revalidatePath('/dashboard/invoices');
 }
